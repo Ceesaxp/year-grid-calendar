@@ -108,11 +108,11 @@ PAGE_WIDTH, PAGE_HEIGHT = A1[1], A1[0]  # Landscape: swap dimensions
 MARGIN = 15.5 * mm
 
 # Grid setup
-COLS: int = 30
+COLS: int = 31
 ROWS: int = 13
-CELL_WIDTH = 27 * mm
+CELL_WIDTH = 26 * mm
 CELL_HEIGHT = 40 * mm
-BORDER = 1 * mm
+BORDER = 1  # 2 points
 
 # Title
 TITLE_HEIGHT = 32 * mm
@@ -209,6 +209,7 @@ def generate_calendar_cells(year: int, events: dict[tuple[int, int], str]) -> li
         List of cell tuples (type, value, date_obj, is_gray, event)
     """
     cells: list[Any] = []
+    is_leap_year = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
 
     # Main year calendar
     current_date = date(year, 1, 1)
@@ -226,6 +227,11 @@ def generate_calendar_cells(year: int, events: dict[tuple[int, int], str]) -> li
         # Get event for this date if any
         event = events.get((current_date.month, current_date.day))
         cells.append(("day", current_date.day, current_date, False, event))
+
+        # If we just added Feb 28 and it's not a leap year, add empty Feb 29
+        if current_date.month == 2 and current_date.day == 28 and not is_leap_year:
+            cells.append(("empty", None, None, False, None))
+
         current_date += timedelta(days=1)
 
     # After Dec 31: Add next year cell
@@ -236,7 +242,7 @@ def generate_calendar_cells(year: int, events: dict[tuple[int, int], str]) -> li
     cells.append(("month", "J", None, True, None))
 
     # Add partial days of January next year (gray)
-    for day in range(1, 12):
+    for day in range(1, 24):
         d = date(next_year, 1, day)
         event = events.get((1, day))
         cells.append(("day", day, d, True, event))
@@ -261,7 +267,11 @@ def draw_cell(
     c.setLineWidth(BORDER)
     c.rect(x, y, CELL_WIDTH, CELL_HEIGHT)
 
-    if cell_type == "month":
+    if cell_type == "empty":
+        # Empty cell (Feb 29 on non-leap years) - just draw border, no content
+        pass
+
+    elif cell_type == "month":
         # Month label - large centered letter
         c.setFont(MONO_BOLD, 48)
         c.setFillColor(GRAY_50 if is_gray else black)
