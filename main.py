@@ -2,7 +2,6 @@
 """Generate a year calendar PDF for A1 paper (landscape)."""
 
 import argparse
-import os
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -340,12 +339,12 @@ def draw_cell(
         c.drawString(x + CELL_WIDTH - padding - weekday_width, line_y, weekday_str)
 
         # Event or bullet points
-        bullet_color = GRAY_50 if is_gray else black
+        bullet_color = GRAY_50
         c.setFillColor(bullet_color)
-        c.setFont(MONO_FONT, 8)
+        c.setFont(MONO_FONT, 14)
 
-        bullet_y_start = line_y - 6 * mm
-        bullet_spacing = 5 * mm
+        bullet_y_start = line_y - 9 * mm
+        bullet_spacing = 6 * mm
 
         if event:
             # Draw event text (truncate if too long)
