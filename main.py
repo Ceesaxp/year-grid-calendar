@@ -3,6 +3,7 @@
 
 import argparse
 import os
+import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -141,14 +142,72 @@ def is_weekend(d: date) -> bool:
     return d.weekday() >= 5
 
 
-def generate_calendar_cells(year: int) -> list[Any]:
+def parse_events_file(filepath: str, year: int) -> dict[tuple[int, int], str]:
+    """Parse events file and return dictionary of events by (month, day).
+
+    Args:
+        filepath: Path to events file
+        year: Year for the calendar (to parse month names correctly)
+
+    Returns:
+        Dictionary mapping (month, day) tuples to event descriptions
+    """
+    events: dict[tuple[int, int], str] = {}
+
+    if not filepath or not Path(filepath).exists():
+        return events
+
+    # Month name to number mapping
+    month_map = {
+        "jan": 1,
+        "feb": 2,
+        "mar": 3,
+        "apr": 4,
+        "may": 5,
+        "jun": 6,
+        "jul": 7,
+        "aug": 8,
+        "sep": 9,
+        "oct": 10,
+        "nov": 11,
+        "dec": 12,
+    }
+
+    with open(filepath, "r") as f:
+        for line in f:
+            line = line.strip()
+
+            # Skip empty lines and comments
+            if not line or line.startswith("#"):
+                continue
+
+            # Parse format: DDMMM  Event description
+            # Match: 2 digits, 3 letters, whitespace, then event text
+            match = re.match(r"^(\d{2})([a-zA-Z]{3})\s+(.+)$", line)
+            if match:
+                day_str, month_str, event_text = match.groups()
+                day = int(day_str)
+                month = month_map.get(month_str.lower())
+
+                if month and 1 <= day <= 31:
+                    events[(month, day)] = event_text
+                else:
+                    print(f"Warning: Invalid date in events file: {line}")
+            else:
+                print(f"Warning: Could not parse line in events file: {line}")
+
+    return events
+
+
+def generate_calendar_cells(year: int, events: dict[tuple[int, int], str]) -> list[Any]:
     """Generate all cells for the specified year calendar + partial next year.
 
     Args:
         year: The year to generate calendar for
+        events: Dictionary of events by (month, day)
 
     Returns:
-        List of cell tuples (type, value, date_obj, is_gray)
+        List of cell tuples (type, value, date_obj, is_gray, event)
     """
     cells: list[Any] = []
 
@@ -157,28 +216,31 @@ def generate_calendar_cells(year: int) -> list[Any]:
     current_month = 1
 
     # Add January label
-    cells.append(("month", "J", None, False))
+    cells.append(("month", "J", None, False, None))
 
     while current_date.year == year:
         if current_date.month != current_month:
             # New month - add label
             current_month = current_date.month
-            cells.append(("month", MONTH_LABELS[current_month - 1], None, False))
+            cells.append(("month", MONTH_LABELS[current_month - 1], None, False, None))
 
-        cells.append(("day", current_date.day, current_date, False))
+        # Get event for this date if any
+        event = events.get((current_date.month, current_date.day))
+        cells.append(("day", current_date.day, current_date, False, event))
         current_date += timedelta(days=1)
 
     # After Dec 31: Add next year cell
     next_year = year + 1
-    cells.append(("year", str(next_year), None, True))
+    cells.append(("year", str(next_year), None, True, None))
 
     # Add January next year label (gray)
-    cells.append(("month", "J", None, True))
+    cells.append(("month", "J", None, True, None))
 
     # Add partial days of January next year (gray)
     for day in range(1, 12):
         d = date(next_year, 1, day)
-        cells.append(("day", day, d, True))
+        event = events.get((1, day))
+        cells.append(("day", day, d, True, event))
 
     return cells
 
@@ -191,6 +253,7 @@ def draw_cell(
     value: str,
     date_obj: date,
     is_gray: bool,
+    event: str | None,
 ):
     """Draw a single cell."""
     # Draw cell border
@@ -276,7 +339,7 @@ def draw_cell(
         weekday_width = c.stringWidth(weekday_str, font, 10)
         c.drawString(x + CELL_WIDTH - padding - weekday_width, line_y, weekday_str)
 
-        # Bullet points (3 lines)
+        # Event or bullet points
         bullet_color = GRAY_50 if is_gray else black
         c.setFillColor(bullet_color)
         c.setFont(MONO_FONT, 8)
@@ -284,18 +347,44 @@ def draw_cell(
         bullet_y_start = line_y - 6 * mm
         bullet_spacing = 5 * mm
 
-        for i in range(3):
-            bullet_y = bullet_y_start - i * bullet_spacing
-            c.drawString(x + padding, bullet_y, "•")
+        if event:
+            # Draw event text (truncate if too long)
+            event_y = bullet_y_start
+            c.setFont(MONO_FONT, 7)
+            # Truncate event to fit cell width
+            max_width = CELL_WIDTH - 2 * padding
+            truncated_event = event
+            while (
+                c.stringWidth(truncated_event, MONO_FONT, 7) > max_width
+                and len(truncated_event) > 0
+            ):
+                truncated_event = truncated_event[:-1]
+            if len(truncated_event) < len(event):
+                truncated_event = truncated_event[:-1] + "…"
+            c.drawString(x + padding, event_y, truncated_event)
+
+            # Draw remaining bullets
+            c.setFont(MONO_FONT, 8)
+            for i in range(1, 3):
+                bullet_y = bullet_y_start - i * bullet_spacing
+                c.drawString(x + padding, bullet_y, "•")
+        else:
+            # Draw 3 bullet points
+            for i in range(3):
+                bullet_y = bullet_y_start - i * bullet_spacing
+                c.drawString(x + padding, bullet_y, "•")
 
 
-def create_calendar_pdf(filename: str, year: int, title: str):
+def create_calendar_pdf(
+    filename: str, year: int, title: str, events: dict[tuple[int, int], str]
+):
     """Create the calendar PDF.
 
     Args:
         filename: Output PDF filename
         year: Year to generate calendar for
         title: Title text to display
+        events: Dictionary of events by (month, day)
     """
     c: canvas.Canvas = canvas.Canvas(filename, pagesize=(PAGE_WIDTH, PAGE_HEIGHT))
 
@@ -306,20 +395,20 @@ def create_calendar_pdf(filename: str, year: int, title: str):
     c.drawString(MARGIN, title_y, title)
 
     # Generate cells
-    cells = generate_calendar_cells(year)
+    cells = generate_calendar_cells(year, events)
 
     # Draw grid from top-left
     row = 0
     col = 0
 
     for cell in cells:
-        cell_type, value, date_obj, is_gray = cell
+        cell_type, value, date_obj, is_gray, event = cell
 
         # Calculate position (top-left origin, going right then down)
         x = GRID_X + col * CELL_WIDTH + BORDER
         y = GRID_Y + GRID_HEIGHT - (row + 1) * CELL_HEIGHT - BORDER
 
-        draw_cell(c, x, y, cell_type, value, date_obj, is_gray)
+        draw_cell(c, x, y, cell_type, value, date_obj, is_gray, event)
 
         col += 1
         if col >= COLS:
@@ -370,6 +459,13 @@ def parse_args():
         "-t", "--title", type=str, default=None, help="Title text (default: YEAR)"
     )
     parser.add_argument(
+        "-e",
+        "--events",
+        type=str,
+        default=None,
+        help="Events file path (format: DDMMM  Event description)",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         type=str,
@@ -390,8 +486,13 @@ if __name__ == "__main__":
     title_font_file = args.title_font if args.title_font else args.bold_font
     TITLE_FONT = register_font("TitleFont", title_font_file, "Courier-Bold")
 
+    # Parse events file if provided
+    events = parse_events_file(args.events, args.year)
+    if events:
+        print(f"Loaded {len(events)} events from {args.events}")
+
     # Set default title and output filename
     title = args.title if args.title else str(args.year)
     output = args.output if args.output else f"calendar_{args.year}.pdf"
 
-    create_calendar_pdf(output, args.year, title)
+    create_calendar_pdf(output, args.year, title, events)
