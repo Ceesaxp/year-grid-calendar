@@ -1,6 +1,6 @@
 # Year Grid Calendar Generator
 
-A Python tool to generate beautiful A1-sized yearly calendar PDFs with customizable fonts, titles, and events.
+A Python tool to generate beautiful A1-sized yearly calendar PDFs with customizable fonts, titles, and events. Geat for putting up on the wall and then scribbling in your important and not-so-much life events for a retrospective ath the end of the year!
 
 ## Features
 
