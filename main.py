@@ -486,8 +486,12 @@ if __name__ == "__main__":
     args = parse_args()
 
     # Register fonts
-    MONO_FONT = register_font("RegularFont", args.font, "Courier")
-    MONO_BOLD = register_font("BoldFont", args.bold_font, "Courier-Bold")
+    MONO_FONT = register_font(  # pyright: ignore[reportConstantRedefinition]
+        "RegularFont", args.font, "Courier"
+    )
+    MONO_BOLD = register_font(  # pyright: ignore[reportConstantRedefinition]
+        "BoldFont", args.bold_font, "Courier-Bold"
+    )
 
     # Try to find italic variant (e.g., Montserrat-Regular -> Montserrat-Italic)
     italic_font = args.font.replace("-Regular", "-Italic").replace("Regular", "Italic")
@@ -498,11 +502,15 @@ if __name__ == "__main__":
             italic_font = "Courier-Oblique"
         else:
             italic_font = args.font  # Fall back to regular font
-    MONO_ITALIC = register_font("ItalicFont", italic_font, "Courier-Oblique")
+    MONO_ITALIC = register_font(  # pyright: ignore[reportConstantRedefinition]
+        "ItalicFont", italic_font, "Courier-Oblique"
+    )
 
     # Use bold font for title if title-font not specified
     title_font_file = args.title_font if args.title_font else args.bold_font
-    TITLE_FONT = register_font("TitleFont", title_font_file, "Courier-Bold")
+    TITLE_FONT = register_font(  # pyright: ignore[reportConstantRedefinition]
+        "TitleFont", title_font_file, "Courier-Bold"
+    )
 
     # Parse events file if provided
     events = parse_events_file(args.events, args.year)
