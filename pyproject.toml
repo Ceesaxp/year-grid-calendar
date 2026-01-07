@@ -1,0 +1,11 @@
+[project]
+name = "year-grid-calendar"
+version = "0.1.0"
+description = "Year grid calendar"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["reportlab"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
