@@ -97,7 +97,7 @@ Create a plain text file with one event per line:
 
 ### Format Rules:
 
-- **Date Format**: `DDMMM` where DD is day (01-31) and MMM is month (jan, feb, mar, etc.)
+- **Date Format**: `DDMMM` where DD is day (01-31) and MMM is month (Jan, feb, MAR, etc.)
 - **Case Insensitive**: Month names can be uppercase, lowercase, or mixed
 - **Separator**: One or more spaces/tabs between date and event description
 - **Comments**: Lines starting with `#` are ignored
@@ -108,13 +108,13 @@ Create a plain text file with one event per line:
 
 ```
 # Birthdays
-21jan  Андрей
-03aug  Ксения
-01sep  Mila
+25Jan  John
+13Aug  Maria
+01Apr  Ho - IIRC!
 
 # Holidays
-01jan  New Year
-14feb  Valentine's Day
+01JAN  New Year
+14FEB  Valentine's Day
 ```
 
 ## Font Discovery
