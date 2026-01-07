@@ -35,6 +35,8 @@ STANDARD_FONTS = {
     "Times-Bold",
     "Times-Italic",
     "Times-BoldItalic",
+    "Courier-Oblique",
+    "Helvetica-Oblique",
 }
 
 
@@ -100,6 +102,7 @@ def register_font(font_name: str, font_file: str, fallback: str) -> str:
 # Default fonts - will be overridden by command-line args
 MONO_FONT = "Courier"
 MONO_BOLD = "Courier-Bold"
+MONO_ITALIC = "Courier-Oblique"
 TITLE_FONT = "Courier-Bold"
 
 
@@ -348,23 +351,17 @@ def draw_cell(
         weekday_width = c.stringWidth(weekday_str, font, 10)
         c.drawString(x + CELL_WIDTH - padding - weekday_width, line_y, weekday_str)
 
-        # Event or bullet points
-        bullet_color = GRAY_50
-        c.setFillColor(bullet_color)
-        c.setFont(MONO_FONT, 14)
-
-        bullet_y_start = line_y - 9 * mm
-        bullet_spacing = 6 * mm
-
+        # Event line (always reserve space)
+        event_y = line_y - 6 * mm
         if event:
             # Draw event text (truncate if too long)
-            event_y = bullet_y_start
-            c.setFont(MONO_FONT, 7)
+            c.setFont(MONO_ITALIC, 7)
+            c.setFillColor(black if not is_gray else GRAY_50)
             # Truncate event to fit cell width
             max_width = CELL_WIDTH - 2 * padding
             truncated_event = event
             while (
-                c.stringWidth(truncated_event, MONO_FONT, 7) > max_width
+                c.stringWidth(truncated_event, MONO_ITALIC, 7) > max_width
                 and len(truncated_event) > 0
             ):
                 truncated_event = truncated_event[:-1]
@@ -372,16 +369,17 @@ def draw_cell(
                 truncated_event = truncated_event[:-1] + "…"
             c.drawString(x + padding, event_y, truncated_event)
 
-            # Draw remaining bullets
-            c.setFont(MONO_FONT, 8)
-            for i in range(1, 3):
-                bullet_y = bullet_y_start - i * bullet_spacing
-                c.drawString(x + padding, bullet_y, "•")
-        else:
-            # Draw 3 bullet points
-            for i in range(3):
-                bullet_y = bullet_y_start - i * bullet_spacing
-                c.drawString(x + padding, bullet_y, "•")
+        # Bullet points (always 3, below event line)
+        bullet_color = GRAY_50
+        c.setFillColor(bullet_color)
+        c.setFont(MONO_FONT, 14)
+
+        bullet_y_start = event_y - 6 * mm
+        bullet_spacing = 6 * mm
+
+        for i in range(3):
+            bullet_y = bullet_y_start - i * bullet_spacing
+            c.drawString(x + padding, bullet_y, "•")
 
 
 def create_calendar_pdf(
@@ -442,45 +440,45 @@ def parse_args():
         type=int,
         default=2026,
         help="Year to generate calendar for (default: 2026)",
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     parser.add_argument(
         "-r",
         "--font",
         type=str,
         default="Helvetica",
         help="Regular font name or filename (default: Helvetica)",
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     parser.add_argument(
         "-b",
         "--bold-font",
         type=str,
         default="Helvetica-Bold",
         help="Bold font name or filename (default: Helvetica-Bold)",
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     parser.add_argument(
         "-T",
         "--title-font",
         type=str,
         default=None,
         help="Title font filename (default: same as bold-font)",
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     parser.add_argument(
         "-t", "--title", type=str, default=None, help="Title text (default: YEAR)"
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     parser.add_argument(
         "-e",
         "--events",
         type=str,
         default=None,
         help="Events file path (format: DDMMM  Event description)",
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     parser.add_argument(
         "-o",
         "--output",
         type=str,
         default=None,
         help="Output PDF filename (default: calendar_YEAR.pdf)",
-    )
+    )  # pyright: ignore[reportUnusedCallResult]
     return parser.parse_args()
 
 
@@ -490,6 +488,17 @@ if __name__ == "__main__":
     # Register fonts
     MONO_FONT = register_font("RegularFont", args.font, "Courier")
     MONO_BOLD = register_font("BoldFont", args.bold_font, "Courier-Bold")
+
+    # Try to find italic variant (e.g., Montserrat-Regular -> Montserrat-Italic)
+    italic_font = args.font.replace("-Regular", "-Italic").replace("Regular", "Italic")
+    if italic_font == args.font:  # No replacement made, try standard mapping
+        if "Helvetica" in args.font:
+            italic_font = "Helvetica-Oblique"
+        elif "Courier" in args.font:
+            italic_font = "Courier-Oblique"
+        else:
+            italic_font = args.font  # Fall back to regular font
+    MONO_ITALIC = register_font("ItalicFont", italic_font, "Courier-Oblique")
 
     # Use bold font for title if title-font not specified
     title_font_file = args.title_font if args.title_font else args.bold_font
