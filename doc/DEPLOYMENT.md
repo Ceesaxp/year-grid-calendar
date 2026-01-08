@@ -1,155 +1,173 @@
 # Deployment Guide
 
-This guide explains how to deploy the Year Grid Calendar Generator as a web service behind Caddy reverse proxy.
+Complete guide to deploying the Year Grid Calendar Generator.
 
-## Architecture
+## Overview
+
+This application can be deployed via Docker Hub to a Digital Ocean Droplet (or any VPS) with Caddy as a reverse proxy.
 
 ```
-Internet → Caddy (year-grid.your-domain.com) → Docker Container (year-grid-calendar:8000)
-                                          ↓
-                                    shared_net network
+Local Machine → Build Image → Push to Docker Hub → Pull on Droplet → Run Container → Caddy → Internet
 ```
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
-- Caddy web server running with access to `shared_net` network
-- Domain `year-grid.your-domain.com` DNS pointing to your server
+- Docker and Docker Compose installed locally
+- Docker Hub account
+- VPS/Droplet with Docker installed
+- Caddy web server running on the droplet
+- Domain pointing to your server
+
+## Quick Start
+
+### 1. Build and Push to Docker Hub
+
+```bash
+# From project root
+cd fonts && ./download_fonts.sh && cd ..
+./scripts/deploy-do.sh
+```
+
+This will:
+- Build an AMD64 image using `Dockerfile.do`
+- Push to Docker Hub as `$DOCKERHUB_USER/year-grid-calendar:latest`
+
+### 2. Deploy on Droplet
+
+SSH to your droplet and run:
+
+```bash
+# Pull and start with docker-compose
+cd /path/to/year-grid-calendar
+docker compose pull
+docker compose up -d
+```
+
+Or run directly:
+
+```bash
+docker pull $DOCKERHUB_USER/year-grid-calendar:latest
+docker run -d \
+  --name year-grid-calendar \
+  --restart unless-stopped \
+  --network proxy_net \
+  -e TZ=UTC \
+  $DOCKERHUB_USER/year-grid-calendar:latest
+```
+
+### 3. Configure Caddy
+
+Add to your Caddyfile:
+
+```
+year-grid.yourdomain.com {
+    reverse_proxy year-grid-calendar:8080
+    encode gzip zstd
+    
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+    }
+}
+```
+
+Reload Caddy:
+
+```bash
+docker exec caddy caddy reload --config /etc/caddy/Caddyfile
+# Or: systemctl reload caddy
+```
 
 ## Directory Structure
 
 ```
 year-grid-calendar/
 ├── src/
-│   └── calendar_core.py          # Core calendar generation logic
+│   └── calendar_core.py      # Core calendar generation logic
 ├── web/
-│   ├── app.py                     # FastAPI web application
-│   └── Dockerfile                 # Container definition
-├── main.py                        # CLI tool (optional, for local use)
-├── docker-compose.yml             # Service orchestration
-├── Caddyfile                      # Caddy configuration snippet
-└── DEPLOYMENT.md                  # This file
+│   ├── app.py                # FastAPI web application
+│   ├── Dockerfile            # Local development container
+│   └── static/               # Static assets (icons, manifest)
+├── fonts/
+│   └── download_fonts.sh     # Font download script
+├── scripts/
+│   ├── deploy-do.sh          # Build and push to Docker Hub
+│   └── deploy.sh             # Local docker-compose deployment
+├── Dockerfile.do             # Production Dockerfile (Alpine)
+├── docker-compose.yml        # Docker orchestration
+├── Caddyfile                 # Caddy configuration snippet
+└── main.py                   # CLI tool
 ```
 
-## Step 1: Create Shared Network
+## Docker Compose Configuration
 
-If you don't already have a `shared_net` network for Caddy, create it:
+Example `docker-compose.yml` for the droplet:
+
+```yaml
+services:
+  calendar-web:
+    image: docker.io/yourusername/year-grid-calendar:latest
+    container_name: year-grid-calendar
+    restart: unless-stopped
+    networks:
+      - proxy_net
+    environment:
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  proxy_net:
+    external: true
+```
+
+## Updating the Application
+
+### From Local Machine
 
 ```bash
-docker network create shared_net
+# Make code changes, then:
+./scripts/deploy-do.sh
 ```
 
-## Step 2: Configure Caddy
-
-Add the configuration from `Caddyfile` to your existing Caddy setup.
-
-### Option A: Include the file
-
-In your main Caddyfile:
-
-```
-import /path/to/year-grid-calendar/Caddyfile
-```
-
-### Option B: Merge manually
-
-Copy the contents of `Caddyfile` into your main Caddy configuration file.
-
-### Reload Caddy
+### On Droplet
 
 ```bash
-docker exec caddy caddy reload --config /etc/caddy/Caddyfile
-# or if running as a service:
-systemctl reload caddy
-```
-
-## Step 3: Build and Deploy
-
-Navigate to the project directory and start the service:
-
-```bash
-cd year-grid-calendar
-
-# Build and start the container
-docker-compose up -d --build
-
-# Check logs
-docker-compose logs -f calendar-web
-```
-
-## Step 4: Verify Deployment
-
-### Health Check
-
-```bash
-curl http://localhost:8000/health
-# Expected: {"status":"healthy"}
-```
-
-### Test via Caddy
-
-```bash
-curl https://year-grid.ceesaxp.org/
-# Should return the HTML form
-```
-
-### Generate a Test Calendar
-
-Visit `https://year-grid.ceesaxp.org/` in your browser and:
-1. Select a year
-2. Click "Generate Calendar PDF"
-3. Download should start automatically
-
-## Maintenance
-
-### View Logs
-
-```bash
-docker-compose logs -f calendar-web
-```
-
-### Restart Service
-
-```bash
-docker-compose restart calendar-web
-```
-
-### Update Deployment
-
-```bash
-# Pull latest code
-git pull
-
-# Rebuild and restart
-docker-compose up -d --build
-```
-
-### Stop Service
-
-```bash
-docker-compose down
+docker compose pull
+docker compose up -d
 ```
 
 ## Monitoring
 
-### Check Container Status
+### Health Check
 
 ```bash
-docker ps | grep year-grid-calendar
+curl http://localhost:8080/health
+# Or via domain:
+curl https://year-grid.yourdomain.com/health
 ```
 
-### Check Resource Usage
+Expected response:
+```json
+{"status": "healthy", "bundled_fonts": 14, "total_fonts": 20}
+```
+
+### View Logs
+
+```bash
+docker compose logs -f calendar-web
+# Or:
+docker logs -f year-grid-calendar
+```
+
+### Resource Usage
 
 ```bash
 docker stats year-grid-calendar
-```
-
-### Health Check Endpoint
-
-The service provides a health check at `/health` which is used by Docker's healthcheck:
-
-```bash
-curl http://localhost:8000/health
 ```
 
 ## Troubleshooting
@@ -158,172 +176,142 @@ curl http://localhost:8000/health
 
 ```bash
 # Check logs
-docker-compose logs calendar-web
+docker logs year-grid-calendar
 
-# Check if port 8000 is already in use
-netstat -tulpn | grep 8000
+# Check if port is in use
+netstat -tlnp | grep 8080
 ```
 
 ### Cannot Connect via Caddy
 
 ```bash
-# Verify container is on shared_net
-docker network inspect shared_net
+# Verify container is on shared network
+docker network inspect proxy_net
 
 # Check Caddy logs
 docker logs caddy
 
-# Test direct connection to container
-docker exec -it year-grid-calendar curl localhost:8000/health
+# Test direct connection
+docker exec year-grid-calendar python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
+```
+
+### exec format error
+
+This means architecture mismatch. The image must be built for AMD64:
+
+```bash
+# Rebuild with correct platform
+docker buildx build --platform linux/amd64 -f Dockerfile.do -t youruser/year-grid-calendar:latest --push .
 ```
 
 ### Font Issues
 
-If custom fonts aren't working, verify font mounts in `docker-compose.yml`:
-
-```yaml
-volumes:
-  - /Library/Fonts:/fonts:ro
-  - /System/Library/Fonts:/system-fonts:ro
-```
-
-### PDF Generation Fails
-
-Check container logs for ReportLab errors:
+Fonts are bundled in the image. If issues occur:
 
 ```bash
-docker-compose logs calendar-web | grep -i error
+# Check fonts in container
+docker exec year-grid-calendar ls -la /app/fonts/
 ```
 
 ## Security Considerations
 
+### Container Security
+- Runs as non-root user (`appuser`)
+- Alpine-based minimal image (~113MB)
+- No unnecessary packages
+
+### Network Security
+- Container not exposed directly to internet
+- Access only via Caddy reverse proxy
+- Caddy handles HTTPS/TLS automatically
+
 ### Rate Limiting
+Built into the application (10 requests per 60 seconds per IP).
 
-The provided Caddyfile includes commented rate limiting configuration. To enable:
+## Performance
 
-1. Install Caddy rate limit plugin
-2. Uncomment the rate_limit section in Caddyfile
-3. Reload Caddy
+### Resource Usage
+- Memory: ~50-100MB
+- CPU: Spikes during PDF generation
+- Disk: Temporary files cleaned automatically
 
-### File Upload Limits
+### Scaling
+For high traffic, increase container replicas behind a load balancer.
 
-By default, FastAPI limits file uploads to a reasonable size. To adjust:
+---
 
-Edit `web/app.py` and add:
+## Deployment Checklist
 
-```python
-from fastapi import FastAPI
-app = FastAPI(max_request_size=10_000_000)  # 10MB limit
-```
+### Pre-Deployment
 
-### HTTPS
+- [ ] Fonts downloaded (`cd fonts && ./download_fonts.sh`)
+- [ ] Docker Hub credentials configured
+- [ ] `Dockerfile.do` uses correct CMD (`python -m uvicorn`)
+- [ ] Test build locally works
 
-Caddy automatically handles HTTPS with Let's Encrypt. Ensure:
-- Port 443 is open
-- DNS is correctly configured
-- Caddy has permissions to bind to privileged ports
+### Deployment
 
-## Performance Tuning
+- [ ] Build and push: `./scripts/deploy-do.sh`
+- [ ] Pull on droplet: `docker compose pull`
+- [ ] Start container: `docker compose up -d`
+- [ ] Configure Caddy reverse proxy
+- [ ] Reload Caddy
 
-### Increase Workers
+### Post-Deployment Verification
 
-For high traffic, increase Uvicorn workers in `web/Dockerfile`:
+- [ ] Health check passes: `curl https://yourdomain.com/health`
+- [ ] Homepage loads correctly
+- [ ] PDF generation works
+- [ ] robots.txt accessible
+- [ ] sitemap.xml accessible
 
-```dockerfile
-CMD ["uvicorn", "web.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
-```
+### SEO Verification (if applicable)
 
-### Resource Limits
+- [ ] Submit sitemap to Google Search Console
+- [ ] Test social media previews (Facebook Debugger)
+- [ ] Validate structured data (Google Rich Results Test)
 
-Add resource limits to `docker-compose.yml`:
+---
 
-```yaml
-services:
-  calendar-web:
-    # ... existing config ...
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
-```
+## Quick Reference
 
-## Backup and Recovery
-
-### Backup Configuration
-
-Important files to backup:
-- `docker-compose.yml`
-- `Caddyfile`
-- Any custom events files
+### Build and Deploy
 
 ```bash
-tar -czf year-grid-calendar-backup.tar.gz \
-  docker-compose.yml \
-  Caddyfile \
-  events.txt
+# Local: build and push
+./scripts/deploy-do.sh
+
+# Droplet: pull and restart
+docker compose pull && docker compose up -d
 ```
 
-### Recovery
+### Useful Commands
 
 ```bash
-# Restore files
-tar -xzf year-grid-calendar-backup.tar.gz
+# View logs
+docker logs -f year-grid-calendar
 
-# Rebuild and start
-docker-compose up -d --build
+# Restart
+docker compose restart
+
+# Stop
+docker compose down
+
+# Check status
+docker compose ps
+
+# Shell access
+docker exec -it year-grid-calendar /bin/sh
 ```
 
-## Updates
+### URLs
 
-### Update Dependencies
+- Health: `/health`
+- Robots: `/robots.txt`
+- Sitemap: `/sitemap.xml`
 
-To update Python packages:
+---
 
-1. Edit `web/Dockerfile` to specify newer versions
-2. Rebuild: `docker-compose up -d --build`
-
-### Update Application Code
-
-```bash
-git pull
-docker-compose up -d --build
-```
-
-## CLI Tool (Local Use)
-
-The CLI tool remains available for local/offline use:
-
-```bash
-# From project root
-./main.py -y 2026 -e events.txt -o calendar_2026.pdf
-```
-
-The CLI and web service share the same core logic from `src/calendar_core.py`.
-
-## Environment Variables
-
-Optional environment variables can be set in `docker-compose.yml`:
-
-```yaml
-environment:
-  - TZ=America/New_York          # Set timezone
-  - LOG_LEVEL=INFO               # Logging level
-  - MAX_UPLOAD_SIZE=10485760     # Max upload size in bytes
-```
-
-## Support
-
-For issues:
-1. Check logs: `docker-compose logs -f`
-2. Verify network connectivity
-3. Test health endpoint
-4. Review Caddy configuration
-5. Check DNS resolution
-
-## License
-
-MIT License - See main README.md for details.
+**Image Size**: ~113MB (Alpine-based)
+**Port**: 8080 (internal)
+**Architecture**: linux/amd64
