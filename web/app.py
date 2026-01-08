@@ -1,5 +1,6 @@
 """FastAPI web application for year grid calendar generator."""
 
+import logging
 import os
 import sys
 import tempfile
@@ -8,12 +9,31 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from calendar_core import create_calendar_pdf, parse_events_file, setup_fonts
 
 app = FastAPI(title="Year Grid Calendar Generator")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Log when the application starts."""
+    logger.info("=" * 60)
+    logger.info("Year Grid Calendar Generator - Web Service Starting")
+    logger.info("=" * 60)
+    logger.info(f"Bundled fonts available: {len(BUNDLED_FONTS)}")
+    logger.info(f"Total fonts available: {len(ALL_FONTS)}")
+    logger.info("Server is ready to accept requests")
+    logger.info("=" * 60)
+
 
 # Get available fonts
 FONTS_DIR = Path(__file__).parent.parent / "fonts"
@@ -337,6 +357,14 @@ async def generate_calendar(
 ):
     """Generate calendar PDF with the provided parameters."""
 
+    # Set title to year if not provided
+    calendar_title = title.strip() if title.strip() else str(year)
+
+    # Log the request
+    logger.info(
+        f"Calendar generation request: year={year}, title='{calendar_title}', fonts=({font}, {bold_font}, {title_font})"
+    )
+
     # Setup fonts
     setup_fonts(font=font, bold_font=bold_font, title_font=title_font)
 
@@ -353,9 +381,7 @@ async def generate_calendar(
 
         # Parse events
         events = parse_events_file(events_tmp_path, year)
-
-    # Set title to year if not provided
-    calendar_title = title.strip() if title.strip() else str(year)
+        logger.info(f"Parsed {len(events)} events from uploaded file")
 
     # Generate PDF
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -363,6 +389,7 @@ async def generate_calendar(
 
     try:
         create_calendar_pdf(output_path, year, calendar_title, events)
+        logger.info(f"Successfully generated calendar PDF: {calendar_title}")
 
         # Return PDF as download
         return FileResponse(
@@ -378,8 +405,8 @@ async def generate_calendar(
         if events_tmp_path:
             try:
                 os.unlink(events_tmp_path)
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp events file: {e}")
 
 
 @app.get("/health")

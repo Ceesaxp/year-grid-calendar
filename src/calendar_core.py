@@ -392,6 +392,7 @@ def create_calendar_pdf(
         title: Title text to display
         events: Dictionary of events by (month, day)
     """
+    print(f"Generating calendar: year={year}, title='{title}'")
     c: canvas.Canvas = canvas.Canvas(filename, pagesize=(PAGE_WIDTH, PAGE_HEIGHT))
 
     # Draw title area
@@ -422,10 +423,13 @@ def create_calendar_pdf(
             row += 1
 
     c.save()
-    print(f"Created {filename}")
-    print(f"Page size: {PAGE_WIDTH/mm:.0f} x {PAGE_HEIGHT/mm:.0f} mm (A1 landscape)")
-    print(f"Grid size: {GRID_WIDTH/mm:.0f} x {GRID_HEIGHT/mm:.0f} mm")
-    print(f"Cells: {len(cells)}")
+    print(f"✅ Created {filename}")
+    print(f"   Title: '{title}'")
+    print(f"   Year: {year}")
+    print(f"   Events: {len(events)}")
+    print(f"   Page size: {PAGE_WIDTH/mm:.0f} x {PAGE_HEIGHT/mm:.0f} mm (A1 landscape)")
+    print(f"   Grid size: {GRID_WIDTH/mm:.0f} x {GRID_HEIGHT/mm:.0f} mm")
+    print(f"   Cells: {len(cells)}")
 
 
 def setup_fonts(
