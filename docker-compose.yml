@@ -1,0 +1,25 @@
+services:
+  calendar-web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: year-grid-calendar
+    restart: unless-stopped
+    networks:
+      - shared_net
+    environment:
+      - TZ=UTC
+    volumes:
+      # Optional: mount system fonts if needed
+      - /Library/Fonts:/fonts:ro
+      - /System/Library/Fonts:/system-fonts:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  shared_net:
+    external: true

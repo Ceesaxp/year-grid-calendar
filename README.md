@@ -1,6 +1,8 @@
 # Year Grid Calendar Generator
 
-A Python tool to generate beautiful A1-sized yearly calendar PDFs with customizable fonts, titles, and events. Geat for putting up on the wall and then scribbling in your important and not-so-much life events for a retrospective ath the end of the year!
+A Python tool to generate beautiful A1-sized yearly calendar PDFs with customizable fonts, titles, and events. Great for putting up on the wall and then scribbling in your important and not-so-much life events for a retrospective at the end of the year!
+
+Available as both a **CLI tool** for local use and a **web service** for online access.
 
 ## Features
 
@@ -11,8 +13,12 @@ A Python tool to generate beautiful A1-sized yearly calendar PDFs with customiza
 - **Weekend Highlighting**: Weekends shown in red/bold
 - **Next Year Preview**: Includes first 10 days of the following year
 - **Print-Ready**: 2-point borders, optimized spacing for annotations
+- **Web Interface**: Beautiful web UI for easy calendar generation
+- **Docker Ready**: Containerized deployment with Caddy integration
 
 ## Installation
+
+### CLI Tool (Local Use)
 
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
@@ -21,12 +27,39 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 uv sync
 
 # Or use pip
-pip install reportlab
+pip install reportlab fastapi uvicorn python-multipart
 ```
+
+### Web Service (Local Development)
+
+Run the web service locally without Docker:
+
+```bash
+# Install dependencies
+uv sync
+
+# Run web server
+uvicorn web.app:app --reload
+
+# Access at http://localhost:8000
+```
+
+See [LOCAL_DEV.md](LOCAL_DEV.md) for detailed local development guide.
+
+### Web Service (Docker Deployment)
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions.
+
+```bash
+# Quick start
+docker-compose up -d --build
+```
+
+Then access at `https://year-grid.ceesaxp.org`
 
 ## Usage
 
-### Basic Usage
+### CLI Tool
 
 Generate a calendar for the current default year (2026):
 
@@ -144,6 +177,35 @@ Specify font filenames with or without `.ttf` or `.ttc` extensions:
 ```
 
 The tool automatically finds italic variants for events (e.g., `Montserrat-Italic`).
+
+## Web Service
+
+The calendar generator is also available as a web service with a beautiful UI.
+
+### Features
+
+- **Interactive Form**: Easy-to-use web interface
+- **Real-time Generation**: Generate calendars on-demand
+- **File Upload**: Upload events files directly
+- **Instant Download**: PDF downloads immediately after generation
+- **Mobile Friendly**: Responsive design works on all devices
+
+### Deployment
+
+Full deployment instructions available in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+**Quick deployment:**
+
+1. Create shared network: `docker network create shared_net`
+2. Start service: `docker-compose up -d --build`
+3. Configure Caddy with provided `Caddyfile`
+4. Access at `https://year-grid.ceesaxp.org`
+
+### API Endpoints
+
+- `GET /` - Web interface
+- `POST /generate` - Generate calendar (form data)
+- `GET /health` - Health check endpoint
 
 ## Calendar Layout
 
