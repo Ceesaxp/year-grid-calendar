@@ -10,7 +10,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -52,6 +52,9 @@ STANDARD_FONTS = [
 ]
 
 ALL_FONTS = sorted(set(STANDARD_FONTS + BUNDLED_FONTS))
+
+# Base URL configuration (set via environment variable or default)
+BASE_URL = os.getenv("BASE_URL", "https://yeargridcalendar.com")
 
 # Validation constants
 MAX_TITLE_LENGTH = 200
@@ -280,7 +283,17 @@ def generate_bold_font_options(selected=None):
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    """Serve the main page with calendar generation form."""
+    """Serve the main page with calendar generation form.
+
+    This page is SEO-optimized with:
+    - Meta tags for search engines (description, keywords, canonical)
+    - Open Graph tags for Facebook/LinkedIn sharing
+    - Twitter Card tags for Twitter sharing
+    - JSON-LD structured data for rich search results
+    - Semantic HTML (header, main, footer) for accessibility
+
+    See SEO_IMPROVEMENTS.md for complete documentation.
+    """
 
     regular_options = generate_font_options(
         "NotoSans-Regular" if "NotoSans-Regular" in ALL_FONTS else "Helvetica"
@@ -298,7 +311,55 @@ async def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Year Grid Calendar Generator</title>
+        <title>Year Grid Calendar Generator - Create Custom Printable Yearly Calendars</title>
+
+        <!-- SEO Meta Tags -->
+        <meta name="description" content="Free online year grid calendar generator. Create beautiful A1-sized printable yearly calendars in PDF format with custom fonts, titles, and events. Perfect for wall calendars and planning.">
+        <meta name="keywords" content="calendar generator, yearly calendar, printable calendar, PDF calendar, wall calendar, A1 calendar, custom calendar, year planner, 2024 calendar, 2025 calendar, 2026 calendar">
+        <meta name="author" content="Year Grid Calendar Generator">
+        <meta name="robots" content="index, follow">
+        <link rel="canonical" href="{BASE_URL}/">
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{BASE_URL}/">
+        <meta property="og:title" content="Year Grid Calendar Generator - Create Custom Printable Yearly Calendars">
+        <meta property="og:description" content="Free online year grid calendar generator. Create beautiful A1-sized printable yearly calendars in PDF format with custom fonts, titles, and events.">
+        <meta property="og:image" content="{BASE_URL}/static/android-chrome-512x512.png">
+        <meta property="og:site_name" content="Year Grid Calendar Generator">
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:url" content="{BASE_URL}/">
+        <meta name="twitter:title" content="Year Grid Calendar Generator - Create Custom Printable Yearly Calendars">
+        <meta name="twitter:description" content="Free online year grid calendar generator. Create beautiful A1-sized printable yearly calendars in PDF format with custom fonts, titles, and events.">
+        <meta name="twitter:image" content="{BASE_URL}/static/android-chrome-512x512.png">
+
+        <!-- JSON-LD Structured Data -->
+        <script type="application/ld+json">
+        {{
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "Year Grid Calendar Generator",
+          "url": "{BASE_URL}/",
+          "description": "Free online year grid calendar generator for creating beautiful A1-sized printable yearly calendars in PDF format",
+          "applicationCategory": "UtilityApplication",
+          "operatingSystem": "Any",
+          "offers": {{
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          }},
+          "featureList": [
+            "Generate yearly calendars in PDF format",
+            "A1 size printable calendars",
+            "Custom fonts support",
+            "Add custom events and holidays",
+            "Unicode and Cyrillic support",
+            "Free to use"
+          ]
+        }}
+        </script>
 
         <!-- Favicons -->
         <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
@@ -449,12 +510,15 @@ async def home():
     </head>
     <body>
         <div class="container">
-            <h1>📅 Year Grid Calendar</h1>
-            <p class="subtitle">Generate a beautiful A1-sized yearly calendar PDF</p>
+            <header>
+                <h1>📅 Year Grid Calendar</h1>
+                <p class="subtitle">Generate a beautiful A1-sized yearly calendar PDF</p>
+            </header>
 
             {f'<div class="font-notice">💡 For best results and Unicode support, download fonts: <code>./fonts/download_fonts.sh</code></div>' if len(BUNDLED_FONTS) == 0 else ''}
 
-            <form id="calendarForm" method="post" enctype="multipart/form-data">
+            <main>
+            <form id="calendarForm" method="post" enctype="multipart/form-data" aria-label="Calendar generation form">
                 <div class="form-group">
                     <label for="year">Year</label>
                     <input type="number" id="year" name="year" value="2026" min="2000" max="2100" required>
@@ -500,6 +564,11 @@ async def home():
                     <small>Format: DDMMM followed by spaces and event description. Supports Unicode (Cyrillic, etc.)</small>
                 </div>
             </form>
+            </main>
+
+            <footer style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 0.85em; color: #666;">
+                <p>Free year grid calendar generator for creating custom printable calendars</p>
+            </footer>
         </div>
 
         <script>
@@ -680,6 +749,34 @@ async def health_check():
         "bundled_fonts": len(BUNDLED_FONTS),
         "total_fonts": len(ALL_FONTS),
     }
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots():
+    """Serve robots.txt for SEO."""
+    content = """User-agent: *
+Allow: /
+Disallow: /generate
+
+Sitemap: {BASE_URL}/sitemap.xml
+"""
+    return Response(content=content, media_type="text/plain")
+
+
+@app.get("/sitemap.xml")
+async def sitemap():
+    """Serve sitemap.xml for SEO."""
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{BASE_URL}/</loc>
+    <lastmod>2026-01-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
+"""
+    return Response(content=content, media_type="application/xml")
 
 
 if __name__ == "__main__":

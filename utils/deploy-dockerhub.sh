@@ -88,7 +88,9 @@ echo ""
 # Build image
 echo "🏗️  Building Docker image..."
 echo "This may take a few minutes on first build..."
-docker build -f Dockerfile.do -t "$FULL_IMAGE" .
+#docker build --platform linux/amd64 -f Dockerfile.do -t "$FULL_IMAGE" .
+docker buildx create --name mybuilder --use
+docker buildx build --platform linux/amd64 -f Dockerfile.do -t "$FULL_IMAGE" --push .
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Docker build failed${NC}"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Download open-source fonts for Year Grid Calendar
 # All fonts are licensed under OFL (Open Font License) or Apache 2.0
 
