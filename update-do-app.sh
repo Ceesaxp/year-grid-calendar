@@ -65,6 +65,8 @@ services:
       branch: $BRANCH
       deploy_on_push: true
 
+    run_command: uvicorn web.app:app --host 0.0.0.0 --port 8080
+
     envs:
       - key: PORT
         value: "8080"
