@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Generated PDFs
+*.pdf
+
+# Events and config files (use volumes for these)
+events.txt
+
+# Documentation (not needed in container)
+README.md
+DEPLOYMENT.md
+
+# Development files
+.python-version
+pyproject.toml
+uv.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Caddy config (not needed in container)
+Caddyfile

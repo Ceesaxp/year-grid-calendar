@@ -12,3 +12,10 @@ wheels/
 # work files
 *.pdf
 events.txt
+
+# Fonts (download with fonts/download_fonts.sh)
+fonts/*.ttf
+fonts/*.ttc
+fonts/*.otf
+!fonts/README.md
+!fonts/download_fonts.sh
