@@ -1,20 +1,29 @@
 services:
   calendar-web:
-    build:
-      context: .
-      dockerfile: web/Dockerfile
+    image: ceesaxp/year-grid-calendar:latest
     container_name: year-grid-calendar
     restart: unless-stopped
+    ports:
+      - "8080:8080"
     networks:
       - shared_net
     environment:
       - TZ=UTC
+      - BASE_URL=https://year-grid.ceesaxp.org
     volumes:
       # Optional: mount system fonts if needed
       - /Library/Fonts:/fonts:ro
       - /System/Library/Fonts:/system-fonts:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

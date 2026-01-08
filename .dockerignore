@@ -32,12 +32,7 @@ env/
 events.txt
 
 # Documentation (not needed in container)
-README.md
-DEPLOYMENT.md
-FIXES.md
-QUICKSTART.md
-LOCAL_DEV.md
-DEPLOY_DIGITALOCEAN.md
+doc/*
 
 # Development files
 .python-version
@@ -51,6 +46,7 @@ Thumbs.db
 # Docker
 docker-compose.yml
 Dockerfile
+Dockerfile.*
 .dockerignore
 
 # Caddy config (not needed in container)

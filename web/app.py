@@ -754,19 +754,18 @@ async def health_check():
 @app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots():
     """Serve robots.txt for SEO."""
-    content = """User-agent: *
+    return f"""User-agent: *
 Allow: /
 Disallow: /generate
 
 Sitemap: {BASE_URL}/sitemap.xml
 """
-    return Response(content=content, media_type="text/plain")
 
 
-@app.get("/sitemap.xml")
+@app.get("/sitemap.xml", response_class=Response)
 async def sitemap():
     """Serve sitemap.xml for SEO."""
-    content = """<?xml version="1.0" encoding="UTF-8"?>
+    content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>{BASE_URL}/</loc>
