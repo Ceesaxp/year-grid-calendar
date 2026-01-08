@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configure logging
@@ -25,6 +26,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from calendar_core import create_calendar_pdf, parse_events_file, setup_fonts
 
 app = FastAPI(title="Year Grid Calendar Generator")
+
+# Mount static files
+STATIC_DIR = Path(__file__).parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Get available fonts
 FONTS_DIR = Path(__file__).parent.parent / "fonts"
@@ -293,6 +299,27 @@ async def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Year Grid Calendar Generator</title>
+
+        <!-- Favicons -->
+        <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96x96.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+        <link rel="shortcut icon" href="/static/favicon.ico">
+
+        <!-- Apple Touch Icons -->
+        <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+        <link rel="apple-touch-icon-precomposed" href="/static/apple-touch-icon-precomposed.png">
+
+        <!-- Android Chrome Icons -->
+        <link rel="icon" type="image/png" sizes="192x192" href="/static/android-chrome-192x192.png">
+        <link rel="icon" type="image/png" sizes="512x512" href="/static/android-chrome-512x512.png">
+
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#667eea">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="Year Grid Calendar">
+        <link rel="manifest" href="/static/manifest.json">
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body {{
