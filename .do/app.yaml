@@ -13,7 +13,7 @@ services:
     github:
       # Replace with your repo details
       repo: ceesaxp/year-grid-calendar
-      branch: main
+      branch: master
       deploy_on_push: true
 
     # Or use GitLab
@@ -21,9 +21,6 @@ services:
     #   repo: your--username/year-grid-calendar
     #   branch: main
     #   deploy_on_push: true
-
-    # Run configuration
-    run_command: uvicorn web.app:app --host 0.0.0.0 --port 8080
 
     # Environment variables
     envs:
