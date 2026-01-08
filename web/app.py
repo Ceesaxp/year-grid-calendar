@@ -26,10 +26,31 @@ from calendar_core import create_calendar_pdf, parse_events_file, setup_fonts
 
 app = FastAPI(title="Year Grid Calendar Generator")
 
+# Get available fonts
+FONTS_DIR = Path(__file__).parent.parent / "fonts"
+BUNDLED_FONTS = []
+
+if FONTS_DIR.exists():
+    for font_file in FONTS_DIR.glob("*.ttf"):
+        font_name = font_file.stem
+        BUNDLED_FONTS.append(font_name)
+
+# Standard PDF fonts
+STANDARD_FONTS = [
+    "Helvetica",
+    "Helvetica-Bold",
+    "Courier",
+    "Courier-Bold",
+    "Times-Roman",
+    "Times-Bold",
+]
+
+ALL_FONTS = sorted(set(STANDARD_FONTS + BUNDLED_FONTS))
+
 # Validation constants
 MAX_TITLE_LENGTH = 200
 MAX_FILE_SIZE = 1024 * 1024  # 1MB
-ALLOWED_FONTS = set(STANDARD_FONTS)  # Will be updated after font discovery
+ALLOWED_FONTS = set(ALL_FONTS)  # Will be updated after font discovery
 MIN_YEAR = 1900
 MAX_YEAR = 2200
 
@@ -212,9 +233,6 @@ def validate_events_file(file: UploadFile) -> None:
 @app.on_event("startup")
 async def startup_event():
     """Log when the application starts."""
-    global ALLOWED_FONTS
-    ALLOWED_FONTS = set(ALL_FONTS)
-
     logger.info("=" * 60)
     logger.info("Year Grid Calendar Generator - Web Service Starting")
     logger.info("=" * 60)
@@ -222,28 +240,6 @@ async def startup_event():
     logger.info(f"Total fonts available: {len(ALL_FONTS)}")
     logger.info("Server is ready to accept requests")
     logger.info("=" * 60)
-
-
-# Get available fonts
-FONTS_DIR = Path(__file__).parent.parent / "fonts"
-BUNDLED_FONTS = []
-
-if FONTS_DIR.exists():
-    for font_file in FONTS_DIR.glob("*.ttf"):
-        font_name = font_file.stem
-        BUNDLED_FONTS.append(font_name)
-
-# Standard PDF fonts
-STANDARD_FONTS = [
-    "Helvetica",
-    "Helvetica-Bold",
-    "Courier",
-    "Courier-Bold",
-    "Times-Roman",
-    "Times-Bold",
-]
-
-ALL_FONTS = sorted(set(STANDARD_FONTS + BUNDLED_FONTS))
 
 
 def generate_font_options(selected=None):
