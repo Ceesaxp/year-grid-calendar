@@ -2,7 +2,7 @@
 # Alpine-based multi-stage build for minimal image size (~50-80MB)
 
 # Stage 1: Download fonts
-FROM alpine:3.20 AS builder
+FROM alpine:3.23 AS builder
 
 RUN apk add --no-cache curl unzip
 

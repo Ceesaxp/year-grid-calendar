@@ -754,6 +754,7 @@ async def health_check():
 #
 # Helpers for SEO
 #
+@app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots():
     """Serve robots.txt for SEO."""
     return f"""User-agent: *
