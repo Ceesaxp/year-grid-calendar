@@ -19,3 +19,10 @@ fonts/*.ttc
 fonts/*.otf
 !fonts/README.md
 !fonts/download_fonts.sh
+
+# Test files and scripts
+test*.*
+*_test*
+
+# Digital Ocean deployment
+.app_id
